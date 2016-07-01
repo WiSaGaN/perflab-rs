@@ -1,7 +1,7 @@
 #![feature(test)]
 extern crate test;
 extern crate time;
-pub use time::{get_time, Timespec};
+pub use time::{at, get_time, Timespec};
 pub use std::sync::mpsc::{sync_channel, Sender};
 
 #[cfg(test)]
@@ -68,3 +68,46 @@ mod g2_sync_channel {
         b.iter(|| { s.send(String::from("The quick brown fox jumps over the lazy dog.")).unwrap(); r.recv() });
     }
 }
+
+#[cfg(test)]
+mod g3_formatting {
+    use super::*;
+    use test::Bencher;
+    use std::thread;
+
+    #[bench]
+    fn t01_format_simple_string(b: &mut Bencher) {
+        b.iter(|| { format!("hello, world") });
+    }
+
+    #[bench]
+    fn t02_format_debug_get_time(b: &mut Bencher) {
+        b.iter(|| { format!("now: {:?}", get_time()) });
+    }
+
+    #[bench]
+    fn t03_format_log_line(b: &mut Bencher) {
+        b.iter(|| {
+            let tm = at(get_time());
+            let tm_millisec = tm.tm_nsec / 1_000_000;
+            let tm_microsec = tm.tm_nsec / 1_000 - tm_millisec * 1_000;
+            format!("{:0>4}{:0>2}{:0>2}T{:0>2}{:0>2}{:0>2}.{:0>3}{:0>3}{:>+03} {}:{}/{}:{}:{} {}",
+                    tm.tm_year + 1900,
+                    tm.tm_mon + 1,
+                    tm.tm_mday,
+                    tm.tm_hour,
+                    tm.tm_min,
+                    tm.tm_sec,
+                    tm_millisec,
+                    tm_microsec,
+                    tm.tm_utcoff/3600,
+                    thread::current().name().unwrap_or_default(),
+                    module_path!(),
+                    file!(),
+                    line!(),
+                    "INFO",
+                    "hello world")
+        });
+    }
+}
+
